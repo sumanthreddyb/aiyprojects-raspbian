@@ -1,71 +1,70 @@
-#!/usr/bin/env python3
-# Copyright 2017 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-"""A demo of the Google CloudSpeech recognizer."""
-import argparse
-import locale
-import logging
+#!/usr/bin/env python
+# coding: utf-8
 
-from aiy.board import Board, Led
-from aiy.cloudspeech import CloudSpeechClient
+# In[ ]:
+
+import process_text.py as processText
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import random
+
+#variables initalization
+phase="Intro"
+Family=0
+Friends=0
+Academics=0
+Others=0
+intro_text="Hi there May i know your good name please"
+greet_text="Hello [*****] My name is Dimple, I am your counsellor friend.I shall ask you questions about you and you can feel free to converse with me.You will be rewarded at the end of conversation"
+questions=[{'ques':'Do Your  parents encourge you to make your own decisions ?','intent':'Family'},
+           {'ques':'Do You think that your  parents try to control everything you do ?','intent':'Family'},
+           {'ques':'Do you feel that my talents are not recognized well enough in your class?','intent':'Friends'},
+           {'ques':'What do you do when somone corrects your mistakes?','intent':'Others'},
+           {'ques':'Do you make friends Easily','intent':'Friends'},
+           {'ques':'Who are your best friends','intent':'Friends'},
+           {'ques':'Do you have any Enemies','intent':'Others'},
+           {'ques':'Do you enjoy doing your homeworks ?','intent':'Academics'},
+           {'ques':'Do you fear exams or tests ?','intent':'Academics'}]
+total_questions=len(questions)
+sid = SentimentIntensityAnalyzer()
+sentimentScore={}
 
 
-def get_hints(language_code):
-    if language_code.startswith('en_'):
-        return ('turn on the light',
-                'turn off the light',
-                'blink the light',
-                'goodbye')
-    return None
+#Functions declaration
+def summarize():
+    print("You seem to be interesting than all others I have seen Get Lost !!!")
+    
+def getReply(ques):
+    return(input(ques))
 
-def locale_language():
-    language, _ = locale.getdefaultlocale()
-    return language
+def getRandomQuestion():
+    globals()['total_questions']=len(questions)
+    if total_questions>0:
+        rand_index=random.randint(0,total_questions-1)
+        rand_question=questions[rand_index]
+        del questions[rand_index]
+        return(rand_question)
+    else:
+        summarize()
+        
+def processReply(reply,intent):
+    sentimentScore = sid.polarity_scores(reply)
+    if sentimentScore['compound']>0:
+        globals()[intent]+=sentimentScore['pos']
+        print('pos:',sentimentScore['pos'])
+    else:
+        globals()[intent]-=sentimentScore['neg']
+        print('neg:',sentimentScore['neg'])
+        
+    
 
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-
-    parser = argparse.ArgumentParser(description='Assistant service example.')
-    parser.add_argument('--language', default=locale_language())
-    args = parser.parse_args()
-
-    logging.info('Initializing for language %s...', args.language)
-    hints = get_hints(args.language)
-    client = CloudSpeechClient()
-    with Board() as board:
-        while True:
-            if hints:
-                logging.info('Say something, e.g. %s.' % ', '.join(hints))
-            else:
-                logging.info('Say something.')
-            text = client.recognize(language_code=args.language,
-                                    hint_phrases=hints)
-            if text is None:
-                logging.info('You said nothing.')
-                continue
-
-            logging.info('You said: "%s"' % text)
-            text = text.lower()
-            if 'turn on the light' in text:
-                board.led.state = Led.ON
-            elif 'turn off the light' in text:
-                board.led.state = Led.OFF
-            elif 'blink the light' in text:
-                board.led.state = Led.BLINK
-            elif 'goodbye' in text:
-                break
-
-if __name__ == '__main__':
-    main()
+print(greet_text)
+question={}
+while(True):
+    question=getRandomQuestion()
+    if(question):
+        reply=getReply(question['ques'])
+        processReply(reply, question['intent'])
+    else:
+        break
+print('Your Scoring is: \n Family: ',Family,'\n Friends: ',Friends,'\n Academics: ',Academics,'\n Others: ',Others,"\n ******************")
